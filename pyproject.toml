@@ -1,0 +1,20 @@
+[project]
+name = "coder"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "artem",email = "artem@deffun.io"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0.0"
+dependencies = [
+    "chainlit (>=2.4.301,<3.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "coder", from = "src"}]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
