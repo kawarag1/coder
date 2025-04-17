@@ -9,7 +9,7 @@ async def open_editor():
 
 
 @cl.action_callback("close_editor")
-async def on_test_action():
+async def on_close_editor():
     await cl.ElementSidebar.set_elements([])
 
 

@@ -1,0 +1,45 @@
+services:
+  api:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8080:80"
+  postgres:
+    image: postgres:17
+    volumes:
+      - .vols/pg/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-root}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-root}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: s3
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack-script.sh:/etc/localstack/init/ready.d/script.sh
+      - "/var/run/docker.sock:/var/run/docker.sock"
+  prisma_migrate:
+    image: node:20
+    container_name: prisma_migrate
+    working_dir: /scripts
+    volumes:
+      - ./scripts:/scripts
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+      apt-get update && apt-get install -y postgresql-client &&
+      until pg_isready -h postgres -p 5432 -U root; do
+        echo 'Waiting for Postgres...';
+        sleep 2;
+      done;
+      npx prisma migrate deploy
+      "
