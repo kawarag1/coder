@@ -1,3 +1,5 @@
+from typing import Optional, Dict
+
 import chainlit as cl
 
 
@@ -18,3 +20,15 @@ async def on_start():
     cl.user_session.set("chat_messages", [])
 
     await open_editor()
+
+
+# noinspection PyUnusedLocal
+@cl.oauth_callback
+def oauth_callback(
+        provider_id: str,
+        token: str,
+        raw_user_data: Dict[str, str],
+        default_user: cl.User,
+) -> Optional[cl.User]:
+    default_user.metadata['token'] = token
+    return default_user
