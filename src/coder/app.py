@@ -1,6 +1,37 @@
+from operator import itemgetter
+
 from typing import Optional, Dict
 
 import chainlit as cl
+from langchain.chains import LLMChain
+from langchain.memory import ConversationBufferMemory
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableConfig, Runnable
+from langchain_openai import ChatOpenAI
+
+from prompts import SYS_PROMPT
+
+
+def setup_runnable():
+    memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+    model = ChatOpenAI(model="gpt-4.1-2025-04-14", streaming=True)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", SYS_PROMPT),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{question}"),
+        ]
+    )
+    runnable = (
+            RunnablePassthrough.assign(
+                history=RunnableLambda(memory.load_memory_variables) | itemgetter("history")
+            )
+            | prompt
+            | model
+            | StrOutputParser()
+    )
+    cl.user_session.set("runnable", runnable)
 
 
 async def open_editor():
@@ -17,9 +48,38 @@ async def on_close_editor():
 
 @cl.on_chat_start
 async def on_start():
+    cl.user_session.set("memory", ConversationBufferMemory(return_messages=True))
+    setup_runnable()
+
     cl.user_session.set("chat_messages", [])
 
-    await open_editor()
+    # await open_editor()
+
+
+@cl.on_chat_resume
+async def on_chat_resume(thread):
+    thread_id = thread.get("id")
+
+
+@cl.on_message
+async def on_message(message: cl.Message):
+    print(type(message))
+    memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+
+    runnable = cl.user_session.get("runnable")  # type: Runnable
+
+    res = cl.Message(content="")
+
+    async for chunk in runnable.astream(
+            {"question": message.content},
+            config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+    ):
+        await res.stream_token(chunk)
+
+    await res.send()
+
+    memory.chat_memory.add_user_message(message.content)
+    memory.chat_memory.add_ai_message(res.content)
 
 
 # noinspection PyUnusedLocal
