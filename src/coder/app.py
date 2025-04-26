@@ -15,7 +15,7 @@ from prompts import SYS_PROMPT
 
 def setup_runnable():
     memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
-    model = ChatOpenAI(model="gpt-4.1-2025-04-14", streaming=True)
+    model = ChatOpenAI(model="gpt-4.1-2025-04-14", base_url="https://api.proxyapi.ru/openai/v1", streaming=True)
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", SYS_PROMPT),
