@@ -127,7 +127,7 @@ async def on_message(message: cl.Message):
 
 async def generate_payment_link():
     client = TochkaClient(environ.get('TOCHKA_API_TOKEN'), environ.get('TOCHKA_CUSTOMER_CODE'),
-                          environ.get('TOCHKA_BASE_REDIRECT_URL'))
+                          environ.get('TOCHKA_SUCCESS_REDIRECT_URL'), environ.get('TOCHKA_FAILURE_REDIRECT_URL'))
     response = await client.create_payment_link('1000', str(uuid.uuid4()))
     payment_link = response['paymentLink']
     return payment_link

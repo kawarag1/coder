@@ -6,10 +6,11 @@ api_uri = "https://enter.tochka.com/uapi/acquiring/v1.0"
 
 
 class TochkaClient:
-    def __init__(self, api_token: str, customer_code: int, base_redirect_url: str):
+    def __init__(self, api_token: str, customer_code: int, success_redirect_url: str, failure_redirect_url: str):
         self.api_token = api_token
         self.customer_code = customer_code
-        self.base_redirect_url = base_redirect_url
+        self.success_redirect_url = success_redirect_url
+        self.failure_redirect_url = failure_redirect_url
 
     async def create_payment_link(self, amount: str, uuid: str):
         request_data = {
@@ -17,8 +18,8 @@ class TochkaClient:
             "amount": amount,
             "purpose": "Подписка deffun",  # на месяц или год
             "paymentMode": ["sbp", "card"],
-            "redirectUrl": self.base_redirect_url + "/success",
-            "failRedirectUrl": self.base_redirect_url + "/fail",
+            "redirectUrl": self.success_redirect_url,
+            "failRedirectUrl": self.failure_redirect_url,
             "consumerId": uuid
         }
 
