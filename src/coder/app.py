@@ -1,16 +1,25 @@
+import uuid
 from operator import itemgetter
 
 from typing import Optional, Dict
 
 import chainlit as cl
+from chainlit.types import CommandDict
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableConfig, Runnable
 from langchain_openai import ChatOpenAI
+from starlette.config import environ
 
 from prompts import SYS_PROMPT
+from tochka_client import TochkaClient
+
+commands = [
+    CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=False, persistent=False),
+    CommandDict(id="donut", description="Задонатить", icon="image", button=False, persistent=False),
+]
 
 
 def setup_runnable():
@@ -48,12 +57,29 @@ async def on_close_editor():
 
 @cl.on_chat_start
 async def on_start():
+    # enable commands
+    await cl.context.emitter.set_commands(commands)
+
     cl.user_session.set("memory", ConversationBufferMemory(return_messages=True))
     setup_runnable()
 
     cl.user_session.set("chat_messages", [])
 
+    # uncomment when subscription will be persisted
+    # if False:
+    #     actions = [
+    #         cl.Action(name="renew_subscription_button", payload={"value": "example_value"}, label="Оформить подписку")
+    #     ]
+    #     await cl.Message(content="У вас закончился пробный период", actions=actions).send()
     # await open_editor()
+
+
+@cl.action_callback("renew_subscription_button")
+async def on_action(action):
+    payment_link = await generate_payment_link()
+    await cl.Message(content=f"[Ссылка на оплату]({payment_link})").send()
+    # Optionally remove the action button from the chatbot user interface
+    await action.remove()
 
 
 # `on_resume` impl is required for the chat history feature and more
@@ -74,6 +100,13 @@ async def on_chat_resume(thread):
 
 @cl.on_message
 async def on_message(message: cl.Message):
+    if message.command == "purchase":
+        payment_link = await generate_payment_link()
+        await cl.Message(content=f"[Ссылка на оплату]({payment_link})").send()
+        return
+    elif message.command == "donut":
+        await cl.Message(content=f"[На новые фичи!](https://yoomoney.ru/fundraise/16LUEMA9FLG.241122)").send()
+        return
     memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
 
     runnable = cl.user_session.get("runnable")  # type: Runnable
@@ -90,6 +123,14 @@ async def on_message(message: cl.Message):
 
     memory.chat_memory.add_user_message(message.content)
     memory.chat_memory.add_ai_message(res.content)
+
+
+async def generate_payment_link():
+    client = TochkaClient(environ.get('TOCHKA_API_TOKEN'), environ.get('TOCHKA_CUSTOMER_CODE'),
+                          environ.get('TOCHKA_SUCCESS_REDIRECT_URL'), environ.get('TOCHKA_FAILURE_REDIRECT_URL'))
+    response = await client.create_payment_link('1000', str(uuid.uuid4()))
+    payment_link = response['paymentLink']
+    return payment_link
 
 
 # noinspection PyUnusedLocal
