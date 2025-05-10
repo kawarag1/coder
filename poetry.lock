@@ -787,6 +787,23 @@ files = [
 ]
 
 [[package]]
+name = "gitingest"
+version = "0.1.4"
+description = "CLI tool to analyze and create text dumps of codebases for LLMs"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "gitingest-0.1.4-py3-none-any.whl", hash = "sha256:0f61f8a98aa527613fde5c3ae13243f42c2e9698fbbe7c0794f19bc62eedc093"},
+    {file = "gitingest-0.1.4.tar.gz", hash = "sha256:b3e537bb38152c48084dcb745e4d32665271a5f16306182628c69d39f615e427"},
+]
+
+[package.dependencies]
+click = ">=8.0.0"
+tiktoken = "*"
+tomli = "*"
+
+[[package]]
 name = "googleapis-common-protos"
 version = "1.69.2"
 description = "Common protobufs used in Google APIs"
@@ -3150,4 +3167,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0.0"
-content-hash = "87ffd5c181384c38233509349dd73a3a128746bbafb02b01038e9132b04e6167"
+content-hash = "64a9e5e9798b680bd33d3ae85f7609afeaf32744e49b5c82a25face8f8b85207"
