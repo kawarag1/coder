@@ -1,10 +1,12 @@
+import re
 import uuid
 from operator import itemgetter
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import chainlit as cl
 from chainlit.types import CommandDict
+from gitingest import ingest
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.output_parsers import StrOutputParser
@@ -17,8 +19,9 @@ from prompts import SYS_PROMPT
 from tochka_client import TochkaClient
 
 commands = [
+    CommandDict(id="github", description="Помоги разобраться с github репозиторием", icon="image", button=False,
+                persistent=False),
     CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=False, persistent=False),
-    CommandDict(id="donut", description="Задонатить", icon="image", button=False, persistent=False),
 ]
 
 
@@ -104,8 +107,28 @@ async def on_message(message: cl.Message):
         payment_link = await generate_payment_link()
         await cl.Message(content=f"[Ссылка на оплату]({payment_link})").send()
         return
-    elif message.command == "donut":
-        await cl.Message(content=f"[На новые фичи!](https://yoomoney.ru/fundraise/16LUEMA9FLG.241122)").send()
+    elif message.command == "github":
+        content = message.content
+        pattern: str = r'(https?://(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:/)?'
+        matches: List[str] = re.findall(pattern, content)
+        if len(matches) == 0:
+            await cl.Message(content="Повтори комманду со ссылкой на репозиторий").send()
+            return
+        if len(matches) > 1:
+            await cl.Message(
+                content="Больше одного репозитория... Выбери только один, а то будет какая-то каша.").send()
+            return
+        # return matches
+        summary, tree, content = ingest(source=matches[0])
+        memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+        runnable = cl.user_session.get("runnable")  # type: Runnable
+        await runnable.ainvoke(
+                {"question": content},
+                config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+        )
+        memory.chat_memory.add_user_message(content)
+        info = parse_repository_info(summary)
+        await cl.Message(content=f"Проанализирован репозиторий {info['repository']}").send()
         return
     memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
 
@@ -144,3 +167,16 @@ def oauth_callback(
     # save this 'token' to use it later for some API calls
     default_user.metadata['token'] = token
     return default_user
+
+
+# Util
+def parse_repository_info(info: str) -> Dict[str, str]:
+    result: Dict[str, str] = {}
+    for line in info.splitlines():
+        if not line.strip():
+            continue
+        key, value = line.strip().split(":", 1)
+        key = key.strip().lower().replace(' ', '_')
+        value = value.strip()
+        result[key] = value
+    return result
