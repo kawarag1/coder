@@ -15,8 +15,8 @@ from langchain_core.runnables import RunnablePassthrough, RunnableLambda, Runnab
 from langchain_openai import ChatOpenAI
 from starlette.config import environ
 
-from prompts import SYS_PROMPT
-from tochka_client import TochkaClient
+from src.coder.prompts import SYS_PROMPT
+from src.coder.tochka_client import TochkaClient
 
 commands = [
     CommandDict(id="github", description="Помоги разобраться с github репозиторием", icon="image", button=False,
