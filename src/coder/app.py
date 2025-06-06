@@ -14,6 +14,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableConfig, Runnable
 from langchain_openai import ChatOpenAI
 from starlette.config import environ
+from database.database import get_session
 
 from src.coder.prompts import SYS_PROMPT
 from src.coder.tochka_client import TochkaClient
@@ -180,3 +181,12 @@ def parse_repository_info(info: str) -> Dict[str, str]:
         value = value.strip()
         result[key] = value
     return result
+
+async def show_sub_status():
+    user_id = cl.user_session.get("user")["id"]
+
+    async with get_session() as session:
+        subscription = await session.execute(
+
+            
+        )
