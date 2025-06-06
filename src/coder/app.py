@@ -15,6 +15,10 @@ from langchain_core.runnables import RunnablePassthrough, RunnableLambda, Runnab
 from langchain_openai import ChatOpenAI
 from starlette.config import environ
 from database.database import get_session
+from models import Subscription, SubscriptionPlan, Payment, User, SubscriptionStatus, PaymentStatus, SubTypes
+from sqlalchemy import select, update
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime, timedelta
 
 from src.coder.prompts import SYS_PROMPT
 from src.coder.tochka_client import TochkaClient
@@ -23,6 +27,8 @@ commands = [
     CommandDict(id="github", description="Помоги разобраться с github репозиторием", icon="image", button=False,
                 persistent=False),
     CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=False, persistent=False),
+   
+    CommandDict(id="mysub", description="Моя подписка", icon="image", button=False, persistent=True) #команда для новой кнопки статуса подписки
 ]
 
 
@@ -104,7 +110,10 @@ async def on_chat_resume(thread):
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    if message.command == "purchase":
+    if message.command and message.command.lower() == "mysub": #кнопка не появляется (доделать)
+        await show_sub_status()
+        return
+    elif message.command == "purchase":
         payment_link = await generate_payment_link()
         await cl.Message(content=f"[Ссылка на оплату]({payment_link})").send()
         return
@@ -182,11 +191,3 @@ def parse_repository_info(info: str) -> Dict[str, str]:
         result[key] = value
     return result
 
-async def show_sub_status():
-    user_id = cl.user_session.get("user")["id"]
-
-    async with get_session() as session:
-        subscription = await session.execute(
-
-            
-        )
