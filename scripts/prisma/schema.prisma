@@ -49,6 +49,8 @@ model User {
 
     @@unique([identifier])
     @@index([identifier])
+
+    subscriptions Subscription[]
 }
 
 model Feedback {
@@ -136,7 +138,7 @@ model Subscription {
   id         String   @id @default(uuid())
   userId     String
   subTypeId  Int
-  paymentId  String
+  paymentId  String @unique
   startsAt   DateTime @default(now())
   endsAt     DateTime @default(now())
   autoRenew  Boolean  @default(true)
