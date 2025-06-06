@@ -124,6 +124,36 @@ model Thread {
     @@index([name])
 }
 
+model SubTypes {
+  id    Int     @id @default(autoincrement())
+  title String
+  cost  Float
+  
+  subs Subscription[]
+}
+
+model Subscription {
+  id         String   @id @default(uuid())
+  userId     String
+  subTypeId  Int
+  paymentId  String
+  startsAt   DateTime @default(now())
+  endsAt     DateTime @default(now())
+  autoRenew  Boolean  @default(true)
+  
+  user      User     @relation(fields: [userId], references: [id])
+  subType   SubTypes @relation(fields: [subTypeId], references: [id])
+  payment   Payment  @relation(fields: [paymentId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  amount      Float
+  operationId String   @db.VarChar(100)
+  
+  subscription Subscription?
+}
+
 enum StepType {
     assistant_message
     embedding
