@@ -14,11 +14,12 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableConfig, Runnable
 from langchain_openai import ChatOpenAI
 from starlette.config import environ
-from database.database import get_session
+from database.database import get_session, get_engine
 from models.models import Subscription, Payment, User, SubTypes
 from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from prompts import SYS_PROMPT
 from tochka_client import TochkaClient
@@ -26,8 +27,8 @@ from tochka_client import TochkaClient
 commands = [
     CommandDict(id="github", description="Помоги разобраться с github репозиторием", icon="image", button=False,
                 persistent=False),
-    CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=True, persistent=True),
-    CommandDict(id="mysub", description="Моя подписка", icon="image", button=True, persistent=True)
+    CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=False, persistent=False),
+    CommandDict(id="mysub", description="Моя подписка", icon="image", button=False, persistent=False)
 ]
 
 
@@ -197,9 +198,9 @@ async def show_sub_status():
     if not user:
         await cl.Message(content="Не удалось определить пользователя").send()
         return
-    sesion = get_session()
-    async with sesion() as db_session:
-        try:
+
+    async with await get_session() as db_session: #уже все работает но в базе ничего нет вывело 
+        try:                                      #Ошибка при получении статуса подписки: relationship 'subs' expects a class or a mapper argument (received: <class 'sqlalchemy.sql.schema.Table'>)
             stmt = select(Subscription).where(
                 Subscription.user_id == user.id,
                 Subscription.ends_at >= datetime.now()
@@ -207,9 +208,11 @@ async def show_sub_status():
 
             result = await db_session.execute(stmt)
             subscription = result.scalars().first()
+
             if not subscription:
                 await cl.Message(content="У вас нет активной подписки").send()
                 return
+
             sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
             message = f"""
             **Статус вашей подписки:**
@@ -219,10 +222,8 @@ async def show_sub_status():
             - Окончание: {subscription.ends_at.strftime('%d.%m.%Y')}
             - Автопродление: {'Да' if subscription.auto_renew else 'Нет'}
             """
-            
+
             await cl.Message(content=message).send()
-            
+
         except Exception as e:
             await cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}").send()
-        finally:
-            await db_session.close()

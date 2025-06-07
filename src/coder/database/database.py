@@ -8,26 +8,24 @@ from sqlalchemy.ext.asyncio import (
 import os
 from models.models import Base
 
+async_engine = None
+async def get_engine():
+    global async_engine
+    if async_engine is None: #вот тут указал именно асинхронный, потому что поетри не работал и просил psy
+        async_engine = create_async_engine(os.getenv('DATABASE_URL').replace('postgresql', 'postgresql+asyncpg'))
+    return async_engine
 
-async def get_engine() -> AsyncEngine:
-    return create_async_engine(os.getenv('DATABASE_URL'))
-
-
+#лучше все это переделать так как делалось лишь бы работаало)))
 async def get_session():
+    engine = await get_engine()
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    return async_session()
 
-    async_session = sessionmaker(await get_engine(), class_=AsyncSession, expire_on_commit=False)
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
-# async def create_tables():
-#     try:
-#         engine = await get_engine()
-#         async with engine.begin() as eng:
-#             await eng.run_sync(Base.metadata.create_all)
-#             print("migration successfully")
-#     except Exception as e:
-#         print("Не удалось создать таблицы. ", str(e))
-# maybe later we can use it with alembic
+async def create_tables():
+    try:
+        engine = await get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            print("Migration successful")
+    except Exception as e:
+        print("Не удалось создать таблицы. ", str(e))
