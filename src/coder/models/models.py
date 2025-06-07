@@ -111,8 +111,8 @@ class SubTypes(Base):
     __tablename__ = "SubTypes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key = True) 
-    title: Mapped[str] = Mapped(String) #mothly or yearly
-    cost: Mapped[float] = Mapped(Numeric)
+    title: Mapped[str] = mapped_column(String) #mothly or yearly
+    cost: Mapped[float] = mapped_column(Numeric)
     
     subs: Mapped["Subscription"] = relationship("Subscriptions", back_populates = "sub_types")
 
