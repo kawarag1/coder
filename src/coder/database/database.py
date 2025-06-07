@@ -22,11 +22,12 @@ async def get_session():
         finally:
             await session.close()
 
-async def create_tables():
-    try:
-        engine = await get_engine()
-        async with engine.begin() as eng:
-            await eng.run_sync(Base.metadata.create_all)
-            print("migration successfully")
-    except Exception as e:
-        print("Не удалось создать таблицы. ", str(e))
+# async def create_tables():
+#     try:
+#         engine = await get_engine()
+#         async with engine.begin() as eng:
+#             await eng.run_sync(Base.metadata.create_all)
+#             print("migration successfully")
+#     except Exception as e:
+#         print("Не удалось создать таблицы. ", str(e))
+# maybe later we can use it with alembic
