@@ -15,7 +15,7 @@ from langchain_core.runnables import RunnablePassthrough, RunnableLambda, Runnab
 from langchain_openai import ChatOpenAI
 from starlette.config import environ
 from database.database import get_session
-from models import Subscription, Payment, User, SubTypes
+from models.models import Subscription, Payment, User, SubTypes
 from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta

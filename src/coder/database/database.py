@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine
 )
 import os
-from src.coder.models.models import Base
+from models.models import Base
 
 
 async def get_engine() -> AsyncEngine:
