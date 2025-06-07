@@ -2,9 +2,8 @@ from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 from sqlalchemy import String, Boolean, Integer, JSON, DateTime, ForeignKey, DOUBLE_PRECISION, Enum, Numeric
 from typing import Optional
 from datetime import datetime
-from enum import Enum as PyEnum
 
-class StepType(PyEnum):
+class StepType(Enum):
     ASSISTANT_MESSAGE = "assistant_message"
     EMBEDDING = "embedding"
     LLM = "llm"
