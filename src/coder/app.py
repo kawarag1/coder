@@ -115,7 +115,7 @@ async def on_message(message: cl.Message):
         await show_sub_status()
         return
     elif message.command == "purchase":
-        payment_link = await generate_payment_link()
+        payment_link = await generate_sandbox_payment_link()
         await cl.Message(content=f"[Ссылка на оплату]({payment_link})").send()
         return
     elif message.command == "github":
@@ -166,6 +166,12 @@ async def generate_payment_link():
     payment_link = response['paymentLink']
     return payment_link
 
+async def generate_sandbox_payment_link():
+    client = TochkaClient(environ.get('TOCHKA_API_TOKEN'), environ.get('TOCHKA_CUSTOMER_CODE'),
+                          environ.get('TOCHKA_SUCCESS_REDIRECT_URL'), environ.get('TOCHKA_FAILURE_REDIRECT_URL'))
+    response = await client.create_payment_link_sandbox("1234.12", str(uuid.uuid4()))
+    payment_link = response['paymentLink']
+    return payment_link
 
 # noinspection PyUnusedLocal
 @cl.oauth_callback
