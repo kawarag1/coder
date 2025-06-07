@@ -14,22 +14,22 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableConfig, Runnable
 from langchain_openai import ChatOpenAI
 from starlette.config import environ
-from src.coder.database.database import get_session
-from src.coder.models import Subscription, SubscriptionPlan, Payment, User, SubscriptionStatus, PaymentStatus, SubTypes
+from database.database import get_session
+from models import Subscription, Payment, User, SubTypes
 from sqlalchemy import select, update
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 
-from src.coder.prompts import SYS_PROMPT
-from src.coder.tochka_client import TochkaClient
+from prompts import SYS_PROMPT
+from tochka_client import TochkaClient
 
 commands = [
     CommandDict(id="github", description="Помоги разобраться с github репозиторием", icon="image", button=False,
                 persistent=False),
-    CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=False, persistent=False),
-   
-    CommandDict(id="mysub", description="Моя подписка", icon="image", button=False, persistent=True) #команда для новой кнопки статуса подписки
+    CommandDict(id="purchase", description="Оплатить подписку", icon="image", button=True, persistent=True),
+    CommandDict(id="mysub", description="Моя подписка", icon="image", button=True, persistent=True)
 ]
+
 
 
 def setup_runnable():
@@ -110,7 +110,7 @@ async def on_chat_resume(thread):
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    if message.command and message.command.lower() == "mysub": #кнопка не появляется (доделать)
+    if message.command and message.command.lower() == "mysub":
         await show_sub_status()
         return
     elif message.command == "purchase":
@@ -191,3 +191,38 @@ def parse_repository_info(info: str) -> Dict[str, str]:
         result[key] = value
     return result
 
+#показываает статус подписки пользователя
+async def show_sub_status():
+    user = cl.user_session.get("user")
+    if not user:
+        await cl.Message(content="Не удалось определить пользователя").send()
+        return
+    sesion = get_session()
+    async with sesion() as db_session:
+        try:
+            stmt = select(Subscription).where(
+                Subscription.user_id == user.id,
+                Subscription.ends_at >= datetime.now()
+            ).order_by(Subscription.ends_at.desc()).limit(1)
+
+            result = await db_session.execute(stmt)
+            subscription = result.scalars().first()
+            if not subscription:
+                await cl.Message(content="У вас нет активной подписки").send()
+                return
+            sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
+            message = f"""
+            **Статус вашей подписки:**
+            - Тип: {sub_type.title}
+            - Стоимость: {sub_type.cost} руб.
+            - Начало: {subscription.starts_at.strftime('%d.%m.%Y')}
+            - Окончание: {subscription.ends_at.strftime('%d.%m.%Y')}
+            - Автопродление: {'Да' if subscription.auto_renew else 'Нет'}
+            """
+            
+            await cl.Message(content=message).send()
+            
+        except Exception as e:
+            await cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}").send()
+        finally:
+            await db_session.close()
