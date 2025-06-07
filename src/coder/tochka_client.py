@@ -43,3 +43,36 @@ class TochkaClient:
                 else:
                     response_text = await response.text()
                     raise Exception(f"Request failed with status {response.status}: {response_text}")
+ 
+
+    async def create_payment_lint_sandbox(self, amount: str, uuid: str):
+        request_data = {
+            "customerCode": str(self.customer_code),
+            "amount": amount,
+            "purpose": "Подписка deffun",  # на месяц или год
+            "paymentMode": ["sbp", "card"],
+            "redirectUrl": self.success_redirect_url,
+            "failRedirectUrl": self.failure_redirect_url,
+            "consumerId": uuid
+        }
+
+        api_request = {
+            "Data": request_data
+        }
+
+        # Serialize to JSON
+        request_json = json.dumps(api_request)
+
+        headers = {
+            "Authorization": f"Bearer working_token",
+            "Content-Type": "application/json"
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{api_uri}/payments", data=request_json, headers=headers) as response:
+                if response.status == 200:
+                    response_json = await response.json()
+                    return response_json.get("Data")
+                else:
+                    response_text = await response.text()
+                    raise Exception(f"Request failed with status {response.status}: {response_text}")
