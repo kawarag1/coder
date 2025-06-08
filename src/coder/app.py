@@ -198,7 +198,7 @@ def parse_repository_info(info: str) -> Dict[str, str]:
         result[key] = value
     return result
 
-#показываает статус подписки пользователя
+#show user's sub status
 async def show_sub_status():
     user = cl.user_session.get("user")
     if not user:
