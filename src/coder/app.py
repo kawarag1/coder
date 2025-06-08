@@ -206,7 +206,7 @@ async def show_sub_status():
         return
 
     async with await get_session() as db_session: #уже все работает но в базе ничего нет вывело 
-        try:                                      #Ошибка при получении статуса подписки: relationship 'subs' expects a class or a mapper argument (received: <class 'sqlalchemy.sql.schema.Table'>)
+        try:                                      
             stmt = select(Subscription).where(
                 Subscription.user_id == user.id,
                 Subscription.ends_at >= datetime.now()

@@ -105,6 +105,7 @@ class User(Base):
     identifier: Mapped[str] = mapped_column(String)
 
     threads: Mapped[list["Thread"]] = relationship("Thread", back_populates = "user")
+    subscription: Mapped["Subscription"] = relationship("Subscription", back_populates = "user")
 
 
 class SubTypes(Base):
@@ -114,11 +115,11 @@ class SubTypes(Base):
     title: Mapped[str] = mapped_column(String)
     cost: Mapped[float] = mapped_column(Numeric)
     
-    subs: Mapped["Subscription"] = relationship("Subscriptions", back_populates = "sub_types")
+    subs: Mapped["Subscription"] = relationship("Subscription", back_populates = "sub_types")
 
 
 class Subscription(Base):
-    __tablename__ = "Subscriptions"
+    __tablename__ = "Subscription"
     
     id: Mapped[str] = mapped_column(String(36), primary_key = True)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("User.id"))
@@ -128,9 +129,9 @@ class Subscription(Base):
     ends_at: Mapped[datetime] = mapped_column(DateTime, default = datetime)
     auto_renew: Mapped[bool] = mapped_column(Boolean, default = True)
     
-    user: Mapped["User"] = relationship("User", back_populates = "subscriptions")
+    user: Mapped["User"] = relationship("User", back_populates = "subscription")
     sub_types: Mapped["SubTypes"] = relationship("SubTypes", back_populates = "subs")
-    payments: Mapped["Payment"] = relationship("Payments", back_populates = "subscription")
+    payments: Mapped["Payment"] = relationship("Payment", back_populates = "subscription")
 
 
 class Payment(Base):
@@ -140,6 +141,6 @@ class Payment(Base):
     amount: Mapped[Numeric] = mapped_column(Numeric(10,2))
     operation_id: Mapped[str] = mapped_column(String(100))
     
-    subscription: Mapped["Subscription"] = relationship(back_populates = "payments")
+    subscription: Mapped["Subscription"] = relationship("Subscription", back_populates = "payments")
 
 
