@@ -205,7 +205,7 @@ async def show_sub_status():
         await cl.Message(content="Не удалось определить пользователя").send()
         return
 
-    async with await get_session() as db_session: #уже все работает но в базе ничего нет вывело 
+    async with await get_session() as db_session:  
         try:                                      
             stmt = select(Subscription).where(
                 Subscription.userId == user.id,
