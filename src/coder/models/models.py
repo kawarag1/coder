@@ -41,7 +41,7 @@ class Step(Base):
     parentId: Mapped[Optional[str]] = mapped_column(String, ForeignKey("Step.id"), nullable = True)
     threadId: Mapped[Optional[str]] = mapped_column(String, ForeignKey("Thread.id"), nullable = True)
     input: Mapped[Optional[str]] = mapped_column(String, nullable = True)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict) #фикс метадаты тоесть обьявили другое имя с _ но обозначаться будет как просто метадата
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default = dict) #фикс метадаты тоесть обьявили другое имя с _ но обозначаться будет как просто метадата
     name: Mapped[Optional[str]] = mapped_column(String, nullable = True)
     output: Mapped[Optional[str]] = mapped_column(String, nullable = True)
     type: Mapped[StepType] = mapped_column(SQLEnum(StepType), default = StepType.UNDEFINED) 
@@ -80,7 +80,7 @@ class Element(Base):
     updatedAt: Mapped[datetime] = mapped_column(DateTime, default = datetime, onupdate = datetime)
     threadId: Mapped[Optional[str]] = mapped_column(String, ForeignKey("Thread.id"), nullable = True)
     stepId: Mapped[str] = mapped_column(String, ForeignKey("Step.id"))
-    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default = dict)
     mime: Mapped[Optional[str]] = mapped_column(String, nullable = True)
     name: Mapped[str] = mapped_column(String)
     objectKey: Mapped[Optional[str]] = mapped_column(String, nullable = True)
@@ -101,7 +101,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String, primary_key = True)
     createdAt: Mapped[datetime] = mapped_column(DateTime, default = datetime)
     updatedAt: Mapped[datetime] = mapped_column(DateTime, default = datetime, onupdate = datetime)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default = dict)
     identifier: Mapped[str] = mapped_column(String)
 
     threads: Mapped[list["Thread"]] = relationship("Thread", back_populates = "user")
