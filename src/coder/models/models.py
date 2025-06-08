@@ -139,7 +139,7 @@ class Payment(Base):
     
     id: Mapped[str] = mapped_column(String(36), primary_key = True)
     amount: Mapped[Numeric] = mapped_column(Numeric(10,2))
-    operation_id: Mapped[str] = mapped_column(String(100))
+    operationId: Mapped[str] = mapped_column(String(100))
     
     subscription: Mapped["Subscription"] = relationship("Subscription", back_populates = "payments")
 
