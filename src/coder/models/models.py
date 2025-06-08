@@ -122,12 +122,12 @@ class Subscription(Base):
     __tablename__ = "Subscription"
     
     id: Mapped[str] = mapped_column(String(36), primary_key = True)
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("User.id"))
-    sub_type_id: Mapped[str] = mapped_column(String, ForeignKey("SubTypes.id"))
-    payment_id: Mapped[str] = mapped_column(String, ForeignKey("Payments.id"))
-    starts_at: Mapped[datetime] = mapped_column(DateTime, default = datetime)
-    ends_at: Mapped[datetime] = mapped_column(DateTime, default = datetime)
-    auto_renew: Mapped[bool] = mapped_column(Boolean, default = True)
+    userId: Mapped[str] = mapped_column(String, ForeignKey("User.id"))
+    subTypeId: Mapped[str] = mapped_column(String, ForeignKey("SubTypes.id"))
+    paymentId: Mapped[str] = mapped_column(String, ForeignKey("Payments.id"))
+    startsAt: Mapped[datetime] = mapped_column(DateTime, default = datetime)
+    endsAt: Mapped[datetime] = mapped_column(DateTime, default = datetime)
+    autoRenew: Mapped[bool] = mapped_column(Boolean, default = True)
     
     user: Mapped["User"] = relationship("User", back_populates = "subscription")
     sub_types: Mapped["SubTypes"] = relationship("SubTypes", back_populates = "subs")

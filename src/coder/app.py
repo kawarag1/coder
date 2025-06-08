@@ -208,9 +208,9 @@ async def show_sub_status():
     async with await get_session() as db_session: #уже все работает но в базе ничего нет вывело 
         try:                                      
             stmt = select(Subscription).where(
-                Subscription.user_id == user.id,
-                Subscription.ends_at >= datetime.now()
-            ).order_by(Subscription.ends_at.desc()).limit(1)
+                Subscription.userId == user.id,
+                Subscription.endsAt >= datetime.now()
+            ).order_by(Subscription.endsAt.desc()).limit(1)
 
             result = await db_session.execute(stmt)
             subscription = result.scalars().first()
@@ -224,9 +224,9 @@ async def show_sub_status():
             **Статус вашей подписки:**
             - Тип: {sub_type.title}
             - Стоимость: {sub_type.cost} руб.
-            - Начало: {subscription.starts_at.strftime('%d.%m.%Y')}
-            - Окончание: {subscription.ends_at.strftime('%d.%m.%Y')}
-            - Автопродление: {'Да' if subscription.auto_renew else 'Нет'}
+            - Начало: {subscription.startsAt.strftime('%d.%m.%Y')}
+            - Окончание: {subscription.endsAt.strftime('%d.%m.%Y')}
+            - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}
             """
 
             await cl.Message(content=message).send()
