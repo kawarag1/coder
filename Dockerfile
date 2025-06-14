@@ -2,7 +2,8 @@ FROM python:3.11
 
 WORKDIR /code
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN pip install poetry
 
 ENV PATH="/root/.local/bin:${PATH}"
 

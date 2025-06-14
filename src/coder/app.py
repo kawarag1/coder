@@ -216,7 +216,7 @@ async def show_sub_status():
             subscription = result.scalars().first()
 
             if not subscription:
-                await cl.Message(content="У вас нет активной подписки").send()
+                await cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ").send()
                 return
 
             sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
