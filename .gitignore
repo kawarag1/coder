@@ -3,3 +3,5 @@
 .env
 
 .vols/
+
+__pycache__/
