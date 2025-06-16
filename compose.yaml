@@ -24,22 +24,22 @@ services:
     volumes:
       - ./localstack-script.sh:/etc/localstack/init/ready.d/script.sh
       - "/var/run/docker.sock:/var/run/docker.sock"
-  prisma_migrate:
-    image: node:20
-    container_name: prisma_migrate
-    working_dir: /scripts
-    volumes:
-      - ./scripts:/scripts
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-    depends_on:
-      - postgres
-    command: >
-      sh -c "
-      apt-get update && apt-get install -y postgresql-client &&
-      until pg_isready -h postgres -p 5432 -U root; do
-        echo 'Waiting for Postgres...';
-        sleep 2;
-      done;
-      npx prisma migrate deploy
-      "
+  # prisma_migrate:
+  #   image: node:20
+  #   container_name: prisma_migrate
+  #   working_dir: /scripts
+  #   volumes:
+  #     - ./scripts:/scripts
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL}
+  #   depends_on:
+  #     - postgres
+  #   command: >
+  #     sh -c "
+  #     apt-get update && apt-get install -y postgresql-client &&
+  #     until pg_isready -h postgres -p 5432 -U root; do
+  #       echo 'Waiting for Postgres...';
+  #       sleep 2;
+  #     done;
+  #     npx prisma migrate deploy
+  #     "
