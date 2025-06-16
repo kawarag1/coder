@@ -13,7 +13,7 @@ datasource db {
     extensions = [pgcrypto]
 }
 
-model Element {
+model elements {
     id        String   @id @default(dbgenerated("gen_random_uuid()"))
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
@@ -25,8 +25,8 @@ model Element {
     name      String
     objectKey String?
     url       String?
-    step      Step    @relation(fields: [stepId], references: [id], onDelete: Cascade)
-    thread    Thread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+    step      steps    @relation(fields: [stepId], references: [id], onDelete: Cascade)
+    thread    threads? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
     chainlitKey String?
     display     String?
@@ -39,13 +39,13 @@ model Element {
     @@index([threadId])
 }
 
-model User {
+model users {
     id         String   @id @default(dbgenerated("gen_random_uuid()"))
     createdAt  DateTime @default(now())
     updatedAt  DateTime @default(now()) @updatedAt
     metadata   Json
     identifier String
-    threads    Thread[]
+    threads    threads[]
 
     @@unique([identifier])
     @@index([identifier])
@@ -53,13 +53,13 @@ model User {
     subscriptions Subscription[]
 }
 
-model Feedback {
+model feedbacks {
     id        String   @id @default(dbgenerated("gen_random_uuid()"))
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
 
     stepId String?
-    Step   Step?   @relation(fields: [stepId], references: [id])
+    Step   steps?   @relation(fields: [stepId], references: [id])
 
     name  String
     value Float
@@ -73,7 +73,7 @@ model Feedback {
     @@index([name, value])
 }
 
-model Step {
+model steps {
     id        String   @id @default(dbgenerated("gen_random_uuid()"))
     createdAt DateTime @default(now())
     updatedAt DateTime @default(now()) @updatedAt
@@ -91,11 +91,11 @@ model Step {
     startTime DateTime
     endTime   DateTime
 
-    elements Element[]
-    parent   Step?      @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
-    children Step[]     @relation("ParentChild")
-    thread   Thread?    @relation(fields: [threadId], references: [id], onDelete: Cascade)
-    Feedback Feedback[]
+    elements elements[]
+    parent   steps?      @relation("ParentChild", fields: [parentId], references: [id], onDelete: Cascade)
+    children steps[]     @relation("ParentChild")
+    thread   threads?    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+    Feedback feedbacks[]
 
     @@index([createdAt])
     @@index([endTime])
@@ -107,7 +107,7 @@ model Step {
     @@index([threadId, startTime, endTime])
 }
 
-model Thread {
+model threads {
     id        String    @id @default(dbgenerated("gen_random_uuid()"))
     createdAt DateTime  @default(now())
     updatedAt DateTime  @default(now()) @updatedAt
@@ -117,10 +117,10 @@ model Thread {
     metadata Json
     tags     String[] @default([])
 
-    elements Element[]
+    elements elements[]
     userId   String?
-    User     User?     @relation(fields: [userId], references: [id])
-    steps    Step[]
+    User     users?     @relation(fields: [userId], references: [id])
+    steps    steps[]
 
     @@index([createdAt])
     @@index([name])
@@ -143,7 +143,7 @@ model Subscription {
   endsAt     DateTime @default(now())
   autoRenew  Boolean  @default(true)
   
-  user      User     @relation(fields: [userId], references: [id])
+  user      users     @relation(fields: [userId], references: [id])
   subType   SubTypes @relation(fields: [subTypeId], references: [id])
   payment   Payment  @relation(fields: [paymentId], references: [id])
 }
