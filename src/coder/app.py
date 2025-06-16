@@ -1,11 +1,13 @@
 import re
 import uuid
+import os
 from operator import itemgetter
 
 from typing import Optional, Dict, List
 
 import chainlit as cl
 from chainlit.types import CommandDict
+from chainlit.data.sql_alchemy import SQLAlchemyDataLayer
 from gitingest import ingest
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
@@ -23,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from prompts import SYS_PROMPT
 from tochka_client import TochkaClient
+from database.database import create_tables
 
 commands = [
     CommandDict(id="github", description="Помоги разобраться с github репозиторием", icon="image", button=False,
@@ -31,7 +34,13 @@ commands = [
     CommandDict(id="mysub", description="Моя подписка", icon="image", button=False, persistent=False)
 ]
 
+@cl.on_app_startup
+async def start():
+    await create_tables()
 
+@cl.data_layer
+def change_data_layer():
+    return SQLAlchemyDataLayer(conninfo = os.getenv("SQLDATABASE_URL"))
 
 def setup_runnable():
     memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
