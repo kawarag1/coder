@@ -6,13 +6,14 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine
 )
 import os
+
 from models.models import Base
 
 async_engine = None
 async def get_engine():
     global async_engine
     if async_engine is None: #вот тут указал именно асинхронный, потому что поетри не работал и просил psy
-        async_engine = create_async_engine(os.getenv('DATABASE_URL').replace('postgresql', 'postgresql+asyncpg'))
+        async_engine = create_async_engine(os.getenv('SQLDATABASE_URL'))
     return async_engine
 
 #лучше все это переделать так как делалось лишь бы работаало)))
