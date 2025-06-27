@@ -216,11 +216,11 @@ async def show_sub_status():
 
     async with await get_session() as db_session:
         try:
-            # Убедимся, что user.id - это UUID объект
+           
             user_id = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(user.id)
             
             stmt = select(Subscription).where(
-                Subscription.userId == user_id,  # Теперь типы совпадают
+                Subscription.userId == user_id,  
                 Subscription.endsAt >= datetime.now()
             ).order_by(Subscription.endsAt.desc()).limit(1)
 
@@ -231,7 +231,7 @@ async def show_sub_status():
                 await cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ").send()
                 return
 
-            # Исправленный запрос для получения типа подписки
+            
             sub_type_stmt = select(SubTypes).where(SubTypes.id == subscription.subTypeId)
             sub_type_result = await db_session.execute(sub_type_stmt)
             sub_type = sub_type_result.scalars().first()
