@@ -80,7 +80,8 @@ async def on_start():
     # enable commands
     await cl.context.emitter.set_commands(commands)
 
-    cl.user_session.set("memory", ConversationBufferMemory(return_messages=True))
+    memory = ConversationBufferMemory(return_messages=True)
+    cl.user_session.set("memory", memory)
     setup_runnable()
 
     cl.user_session.set("chat_messages", [])
@@ -120,8 +121,13 @@ async def on_chat_resume(thread):
 
 @cl.on_message
 async def on_message(message: cl.Message):
+    print(f"New message: {message.id}, parent: {message.parent_id}")
+    memory = cl.user_session.get("memory")
+    runnable = cl.user_session.get("runnable")
+    memory.chat_memory.add_user_message(message.content)
     if message.command and message.command.lower() == "mysub":
-        await show_sub_status()
+        memory.chat_memory.add_user_message(message.content)
+        await show_sub_status(memory, message)
         return
     elif message.command == "purchase":
         payment_link = await generate_sandbox_payment_link()
@@ -140,32 +146,33 @@ async def on_message(message: cl.Message):
             return
         # return matches
         summary, tree, content = ingest(source=matches[0])
-        memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
-        runnable = cl.user_session.get("runnable")  # type: Runnable
+        # memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+        # runnable = cl.user_session.get("runnable")  # type: Runnable
         await runnable.ainvoke(
                 {"question": content},
                 config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
         )
-        memory.chat_memory.add_user_message(content)
         info = parse_repository_info(summary)
         await cl.Message(content=f"Проанализирован репозиторий {info['repository']}").send()
         return
-    memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+    else:
 
-    runnable = cl.user_session.get("runnable")  # type: Runnable
+    # memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
 
-    res = cl.Message(content="")
+    # runnable = cl.user_session.get("runnable")  # type: Runnable
 
-    async for chunk in runnable.astream(
-            {"question": message.content},
-            config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
-    ):
-        await res.stream_token(chunk)
+        res = cl.Message(content="")
 
-    await res.send()
+        async for chunk in runnable.astream(
+                {"question": message.content},
+                config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+        ):
+            await res.stream_token(chunk)
 
-    memory.chat_memory.add_user_message(message.content)
-    memory.chat_memory.add_ai_message(res.content)
+        await res.send()
+
+        memory.chat_memory.add_user_message(message.content)
+        memory.chat_memory.add_ai_message(res.content)
 
 
 async def generate_payment_link():
@@ -208,10 +215,12 @@ def parse_repository_info(info: str) -> Dict[str, str]:
     return result
 
 #show user's sub status
-async def show_sub_status():
+async def show_sub_status(memory: ConversationBufferMemory, _message: cl.Message):
     user = cl.user_session.get("user")
     if not user:
-        await cl.Message(content="Не удалось определить пользователя").send()
+        message = cl.Message(content="Не удалось определить пользователя") 
+        memory.chat_memory.add_ai_message(message.content)
+        await message.send()
         return
 
     async with await get_session() as db_session:  
@@ -225,20 +234,26 @@ async def show_sub_status():
             subscription = result.scalars().first()
 
             if not subscription:
-                await cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ").send()
+                message = cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ")
+                print(f"New message: {message.id}, parent: {message.parent_id}")
+                memory.chat_memory.add_ai_message(message.content)
+                await message.send()
                 return
-
-            sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
-            message = f"""
-            **Статус вашей подписки:**
-            - Тип: {sub_type.title}
-            - Стоимость: {sub_type.cost} руб.
-            - Начало: {subscription.startsAt.strftime('%d.%m.%Y')}
-            - Окончание: {subscription.endsAt.strftime('%d.%m.%Y')}
-            - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}
-            """
-
-            await cl.Message(content=message).send()
+            else:
+                sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
+                message_ = f"""
+                **Статус вашей подписки:**
+                - Тип: {sub_type.title}
+                - Стоимость: {sub_type.cost} руб.
+                - Начало: {subscription.startsAt.strftime('%d.%m.%Y')}
+                - Окончание: {subscription.endsAt.strftime('%d.%m.%Y')}
+                - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}
+                """
+                message = cl.Message(content=_message)
+                memory.chat_memory.add_ai_message(message.content)
+                await message.send()
 
         except Exception as e:
-            await cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}").send()
+            message = cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}")
+            memory.chat_memory.add_ai_message(message.content)
+            await message.send()

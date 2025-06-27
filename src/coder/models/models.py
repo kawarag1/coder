@@ -62,7 +62,7 @@ class Step(Base):
     showInput: Mapped[Optional[str]] = mapped_column(String)
     language: Mapped[Optional[str]] = mapped_column(String)
     indent: Mapped[Optional[int]] = mapped_column(Integer)
-    defaultOpen: Mapped[bool] = mapped_column(Boolean, default = False)
+    defaultOpen: Mapped[bool] = mapped_column(Boolean, default = False, nullable=False)
 
     thread: Mapped["Thread"] = relationship(back_populates="steps")
     parent: Mapped[Optional["Step"]] = relationship(remote_side=[id])

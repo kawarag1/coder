@@ -8,7 +8,7 @@ packages = [{ include = "coder", from = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0.0"
-chainlit = ">=2.4.301,<3.0.0"
+chainlit = "^2.5.5"
 asyncpg = ">=0.30.0,<0.31.0"
 langchain = ">=0.3.23,<0.4.0"
 langchain-openai = ">=0.3.13,<0.4.0"
