@@ -214,10 +214,13 @@ async def show_sub_status():
         await cl.Message(content="Не удалось определить пользователя").send()
         return
 
-    async with await get_session() as db_session:  
-        try:                                      
+    async with await get_session() as db_session:
+        try:
+            # Убедимся, что user.id - это UUID объект
+            user_id = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(user.id)
+            
             stmt = select(Subscription).where(
-                Subscription.userId == user.id,
+                Subscription.userId == user_id,  # Теперь типы совпадают
                 Subscription.endsAt >= datetime.now()
             ).order_by(Subscription.endsAt.desc()).limit(1)
 
@@ -228,11 +231,15 @@ async def show_sub_status():
                 await cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ").send()
                 return
 
-            sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
+            # Исправленный запрос для получения типа подписки
+            sub_type_stmt = select(SubTypes).where(SubTypes.id == subscription.subTypeId)
+            sub_type_result = await db_session.execute(sub_type_stmt)
+            sub_type = sub_type_result.scalars().first()
+
             message = f"""
             **Статус вашей подписки:**
-            - Тип: {sub_type.title}
-            - Стоимость: {sub_type.cost} руб.
+            - Тип: {sub_type.title if sub_type else 'Неизвестно'}
+            - Стоимость: {sub_type.cost if sub_type else 'Неизвестно'} руб.
             - Начало: {subscription.startsAt.strftime('%d.%m.%Y')}
             - Окончание: {subscription.endsAt.strftime('%d.%m.%Y')}
             - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}

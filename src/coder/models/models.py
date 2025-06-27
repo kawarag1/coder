@@ -115,17 +115,17 @@ class SubTypes(Base):
 class Subscription(Base):
     __tablename__ = "Subscription"
     
-    id: Mapped[UUID] = mapped_column(UUID(as_uuid = True), primary_key = True, default = uuid4)
-    userId: Mapped[str] = mapped_column(UUID, ForeignKey("users.id"))
-    subTypeId: Mapped[str] = mapped_column(UUID, ForeignKey("SubTypes.id"))
-    paymentId: Mapped[str] = mapped_column(UUID, ForeignKey("Payments.id"))
-    startsAt: Mapped[datetime] = mapped_column(DateTime, default = datetime)
-    endsAt: Mapped[datetime] = mapped_column(DateTime, default = datetime)
-    autoRenew: Mapped[bool] = mapped_column(Boolean, default = True)
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    userId: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))  
+    subTypeId: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("SubTypes.id"))  
+    paymentId: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("Payments.id"))  
+    startsAt: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    endsAt: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    autoRenew: Mapped[bool] = mapped_column(Boolean, default=True)
     
-    user: Mapped["User"] = relationship("User", back_populates = "subscription")
-    sub_types: Mapped["SubTypes"] = relationship("SubTypes", back_populates = "subs")
-    payments: Mapped["Payment"] = relationship("Payment", back_populates = "subscription")
+    user: Mapped["User"] = relationship("User", back_populates="subscription")
+    sub_types: Mapped["SubTypes"] = relationship("SubTypes", back_populates="subs")
+    payments: Mapped["Payment"] = relationship("Payment", back_populates="subscription")
 
 
 class Payment(Base):
