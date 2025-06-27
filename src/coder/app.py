@@ -121,58 +121,112 @@ async def on_chat_resume(thread):
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    print(f"New message: {message.id}, parent: {message.parent_id}")
-    memory = cl.user_session.get("memory")
-    runnable = cl.user_session.get("runnable")
-    memory.chat_memory.add_user_message(message.content)
-    if message.command and message.command.lower() == "mysub":
-        memory.chat_memory.add_user_message(message.content)
-        await show_sub_status(memory, message)
-        return
-    elif message.command == "purchase":
-        payment_link = await generate_sandbox_payment_link()
-        await cl.Message(content=f"[Ссылка на оплату]({payment_link})").send()
-        return
-    elif message.command == "github":
-        content = message.content
-        pattern: str = r'(https?://(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:/)?'
-        matches: List[str] = re.findall(pattern, content)
-        if len(matches) == 0:
-            await cl.Message(content="Повтори комманду со ссылкой на репозиторий").send()
-            return
-        if len(matches) > 1:
-            await cl.Message(
-                content="Больше одного репозитория... Выбери только один, а то будет какая-то каша.").send()
-            return
-        # return matches
-        summary, tree, content = ingest(source=matches[0])
-        # memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
-        # runnable = cl.user_session.get("runnable")  # type: Runnable
-        await runnable.ainvoke(
-                {"question": content},
-                config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+    try:
+        root_msg = cl.Message(
+            content="⌛ Обработка запроса...",
+            author="system",
+            parent_id=message.id
         )
-        info = parse_repository_info(summary)
-        await cl.Message(content=f"Проанализирован репозиторий {info['repository']}").send()
-        return
-    else:
 
-    # memory = cl.user_session.get("memory")  # type: ConversationBufferMemory
+        memory = cl.user_session.get("memory")
+        runnable = cl.user_session.get("runnable")
+        memory.chat_memory.add_user_message(message.content)
+        await root_msg.send()
+        if message.command and message.command.lower() == "mysub":
+            # memory.chat_memory.add_user_message(message.content)
+            memory.chat_memory.add_ai_message(root_msg.content)
+            await show_sub_status(memory, root_msg.parent_id)
+            return
 
-    # runnable = cl.user_session.get("runnable")  # type: Runnable
+        elif message.command == "purchase":
+            # memory.chat_memory.add_user_message(message.content)
+            memory.chat_memory.add_ai_message(root_msg.content)
+            payment_link = await generate_sandbox_payment_link()
+            payment_message = cl.Message(
+                content=f"[Ссылка на оплату]({payment_link})",
+                parent_id=root_msg.id
+            )
+            memory.chat_memory.add_ai_message(payment_message.content)
+            await payment_message.send()
+            return
 
-        res = cl.Message(content="")
+        elif message.command == "github":
+            # memory.chat_memory.add_user_message(message.content)
+            memory.chat_memory.add_ai_message(root_msg.content)
+            content = message.content
+            pattern = r'(https?://(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:/)?'
+            matches = re.findall(pattern, content)
+            
+            second_root_msg = cl.Message(
+                content="⌛ Анализирую ссылку...",
+                author="system",
+                parent_id=root_msg.id
+            )
+            memory.chat_memory.add_ai_message(second_root_msg.content)
+            await second_root_msg.send()
 
+            if not matches:
+                errMessage = cl.Message(
+                    content="Повторите команду со ссылкой на репозиторий",
+                    parent_id=second_root_msg.id
+                )
+                memory.chat_memory.add_ai_message(errMessage.content)
+                await errMessage.send()
+                return
+            
+            if len(matches) > 1:
+                errMessage = cl.Message(
+                    content="Пожалуйста, укажите только один репозиторий",
+                    parent_id=second_root_msg.id
+                )
+                memory.chat_memory.add_ai_message(errMessage.content)
+                await errMessage.send()
+                return
+
+            github_msg = cl.Message(
+                content="Анализирую репозиторий...",
+                parent_id=second_root_msg.id
+            )
+            github_msg.send()
+
+            summary, tree, content = ingest(source=matches[0])
+            await runnable.ainvoke(
+                {"question": content},
+                config=RunnableConfig(
+                    callbacks=[cl.LangchainCallbackHandler(
+                        parent_id=github_msg.id
+                    )]
+                ),
+            )
+            
+            memory.chat_memory.add_user_message(content)
+            info = parse_repository_info(summary)
+            await cl.Message(
+                content=f"Проанализирован репозиторий {info['repository']}",
+                parent_id=github_msg.id
+            ).send()
+            return
+
+        # memory.chat_memory.add_user_message(message.content)
+        
+        res = cl.Message(content="", parent_id=root_msg.id)
+        
         async for chunk in runnable.astream(
-                {"question": message.content},
-                config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+            {"question": message.content},
+            config=RunnableConfig(
+                callbacks=[cl.LangchainCallbackHandler(
+                    parent_id=root_msg.id
+                )]
+            ),
         ):
             await res.stream_token(chunk)
-
+        
         await res.send()
-
-        memory.chat_memory.add_user_message(message.content)
         memory.chat_memory.add_ai_message(res.content)
+
+    except Exception as e:    
+        await cl.Message(content=f"❌ Ошибка: {str(e)}").send()
+        raise
 
 
 async def generate_payment_link():
@@ -215,10 +269,10 @@ def parse_repository_info(info: str) -> Dict[str, str]:
     return result
 
 #show user's sub status
-async def show_sub_status(memory: ConversationBufferMemory, _message: cl.Message):
+async def show_sub_status(memory: ConversationBufferMemory, parentID):
     user = cl.user_session.get("user")
     if not user:
-        message = cl.Message(content="Не удалось определить пользователя") 
+        message = cl.Message(content="Не удалось определить пользователя", parent_id=parentID) 
         memory.chat_memory.add_ai_message(message.content)
         await message.send()
         return
@@ -237,7 +291,7 @@ async def show_sub_status(memory: ConversationBufferMemory, _message: cl.Message
             subscription = result.scalars().first()
 
             if not subscription:
-                message = cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ")
+                message = cl.Message(content="У вас нет активной подписки. Для оформления используйте команду '/purchase' ", parent_id=parentID)
                 print(f"New message: {message.id}, parent: {message.parent_id}")
                 memory.chat_memory.add_ai_message(message.content)
                 await message.send()
@@ -257,7 +311,7 @@ async def show_sub_status(memory: ConversationBufferMemory, _message: cl.Message
             - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}
             """
 
-            await cl.Message(content=message).send()
+            await cl.Message(content=message, parent_id=parentID).send()
 
         except Exception as e:
             await cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}").send()
