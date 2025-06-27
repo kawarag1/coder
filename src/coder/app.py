@@ -223,10 +223,13 @@ async def show_sub_status(memory: ConversationBufferMemory, _message: cl.Message
         await message.send()
         return
 
-    async with await get_session() as db_session:  
-        try:                                      
+    async with await get_session() as db_session:
+        try:
+           
+            user_id = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(user.id)
+            
             stmt = select(Subscription).where(
-                Subscription.userId == user.id,
+                Subscription.userId == user_id,  
                 Subscription.endsAt >= datetime.now()
             ).order_by(Subscription.endsAt.desc()).limit(1)
 
@@ -239,21 +242,22 @@ async def show_sub_status(memory: ConversationBufferMemory, _message: cl.Message
                 memory.chat_memory.add_ai_message(message.content)
                 await message.send()
                 return
-            else:
-                sub_type = await db_session.get(SubTypes, subscription.sub_type_id)
-                message_ = f"""
-                **Статус вашей подписки:**
-                - Тип: {sub_type.title}
-                - Стоимость: {sub_type.cost} руб.
-                - Начало: {subscription.startsAt.strftime('%d.%m.%Y')}
-                - Окончание: {subscription.endsAt.strftime('%d.%m.%Y')}
-                - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}
-                """
-                message = cl.Message(content=_message)
-                memory.chat_memory.add_ai_message(message.content)
-                await message.send()
+
+            
+            sub_type_stmt = select(SubTypes).where(SubTypes.id == subscription.subTypeId)
+            sub_type_result = await db_session.execute(sub_type_stmt)
+            sub_type = sub_type_result.scalars().first()
+
+            message = f"""
+            **Статус вашей подписки:**
+            - Тип: {sub_type.title if sub_type else 'Неизвестно'}
+            - Стоимость: {sub_type.cost if sub_type else 'Неизвестно'} руб.
+            - Начало: {subscription.startsAt.strftime('%d.%m.%Y')}
+            - Окончание: {subscription.endsAt.strftime('%d.%m.%Y')}
+            - Автопродление: {'Да' if subscription.autoRenew else 'Нет'}
+            """
+
+            await cl.Message(content=message).send()
 
         except Exception as e:
-            message = cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}")
-            memory.chat_memory.add_ai_message(message.content)
-            await message.send()
+            await cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}").send()
