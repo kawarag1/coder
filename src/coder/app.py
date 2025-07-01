@@ -18,7 +18,7 @@ from langchain_openai import ChatOpenAI
 from starlette.config import environ
 from database.database import get_session, get_engine
 from models.models import Subscription, Payment, User, SubTypes
-from sqlalchemy import select, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -123,99 +123,87 @@ async def on_chat_resume(thread):
 async def on_message(message: cl.Message):
     try:
         root_msg = cl.Message(
-            content="⌛ Обработка запроса...",
-            author="system",
-            parent_id=message.id
+            content="⌛️ Обработка запроса...",
+            author="system"
         )
-
+        await root_msg.send()
+        
         memory = cl.user_session.get("memory")
         runnable = cl.user_session.get("runnable")
         memory.chat_memory.add_user_message(message.content)
-        await root_msg.send()
+
         if message.command and message.command.lower() == "mysub":
-            # memory.chat_memory.add_user_message(message.content)
             memory.chat_memory.add_ai_message(root_msg.content)
-            await show_sub_status(memory, root_msg.parent_id)
+            await show_sub_status(memory, root_msg.id)
             return
 
         elif message.command == "purchase":
-            # memory.chat_memory.add_user_message(message.content)
-            memory.chat_memory.add_ai_message(root_msg.content)
-            payment_link = await generate_sandbox_payment_link()
-            payment_message = cl.Message(
-                content=f"[Ссылка на оплату]({payment_link})",
-                parent_id=root_msg.id
-            )
-            memory.chat_memory.add_ai_message(payment_message.content)
-            await payment_message.send()
+            await create_sub()
+            await cl.Message(content = "Подписка оформлена!").send()
             return
 
         elif message.command == "github":
-            # memory.chat_memory.add_user_message(message.content)
             memory.chat_memory.add_ai_message(root_msg.content)
             content = message.content
             pattern = r'(https?://(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:/)?'
             matches = re.findall(pattern, content)
             
             second_root_msg = cl.Message(
-                content="⌛ Анализирую ссылку...",
-                author="system",
-                parent_id=root_msg.id
+                content="⌛️ Анализирую ссылку...",
+                author="system"
             )
-            memory.chat_memory.add_ai_message(second_root_msg.content)
             await second_root_msg.send()
+            memory.chat_memory.add_ai_message(second_root_msg.content)
 
             if not matches:
                 errMessage = cl.Message(
-                    content="Повторите команду со ссылкой на репозиторий",
-                    parent_id=second_root_msg.id
+                    content="Повторите команду со ссылкой на репозиторий"
                 )
-                memory.chat_memory.add_ai_message(errMessage.content)
                 await errMessage.send()
+                memory.chat_memory.add_ai_message(errMessage.content)
                 return
             
             if len(matches) > 1:
                 errMessage = cl.Message(
-                    content="Пожалуйста, укажите только один репозиторий",
-                    parent_id=second_root_msg.id
+                    content="Пожалуйста, укажите только один репозиторий"
                 )
-                memory.chat_memory.add_ai_message(errMessage.content)
                 await errMessage.send()
+                memory.chat_memory.add_ai_message(errMessage.content)
                 return
 
             github_msg = cl.Message(
-                content="Анализирую репозиторий...",
-                parent_id=second_root_msg.id
+                content="Анализирую репозиторий..."
             )
-            github_msg.send()
+            await github_msg.send()
 
             summary, tree, content = ingest(source=matches[0])
             await runnable.ainvoke(
                 {"question": content},
                 config=RunnableConfig(
                     callbacks=[cl.LangchainCallbackHandler(
-                        parent_id=github_msg.id
+                        stream_final_answer=True,
+                        answer_prefix_tokens=["FINAL", "ANSWER"]
                     )]
                 ),
             )
             
             memory.chat_memory.add_user_message(content)
             info = parse_repository_info(summary)
-            await cl.Message(
-                content=f"Проанализирован репозиторий {info['repository']}",
-                parent_id=github_msg.id
-            ).send()
+            result_msg = cl.Message(
+                content=f"Проанализирован репозиторий {info['repository']}"
+            )
+            await result_msg.send()
+            memory.chat_memory.add_ai_message(result_msg.content)
             return
 
-        # memory.chat_memory.add_user_message(message.content)
-        
-        res = cl.Message(content="", parent_id=root_msg.id)
+        res = cl.Message(content="")
         
         async for chunk in runnable.astream(
             {"question": message.content},
             config=RunnableConfig(
                 callbacks=[cl.LangchainCallbackHandler(
-                    parent_id=root_msg.id
+                    stream_final_answer=True,
+                    answer_prefix_tokens=["FINAL", "ANSWER"]
                 )]
             ),
         ):
@@ -225,7 +213,8 @@ async def on_message(message: cl.Message):
         memory.chat_memory.add_ai_message(res.content)
 
     except Exception as e:    
-        await cl.Message(content=f"❌ Ошибка: {str(e)}").send()
+        error_msg = cl.Message(content=f"❌ Ошибка: {str(e)}")
+        await error_msg.send()
         raise
 
 
@@ -315,3 +304,32 @@ async def show_sub_status(memory: ConversationBufferMemory, parentID):
 
         except Exception as e:
             await cl.Message(content=f"Ошибка при получении статуса подписки: {str(e)}").send()
+
+
+async def create_sub():
+    user = cl.user_session.get("user")
+    if not user:
+        message = cl.Message(content="Не удалось определить пользователя") 
+        await message.send()
+        return
+    async with await get_session() as db_session:
+        user_id = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(user.id)
+
+        IdForPayment = uuid.uuid4()
+        payment_query = insert(Payment).values(
+            id = IdForPayment,
+            amount = 100,
+            operationId = "aofjasopjfopasjfo"
+        )
+        await db_session.execute(payment_query)
+
+        query = insert(Subscription).values(
+            userId = user_id,
+            subTypeId = "4ab28f9c-5e1d-4f3a-8b7c-1d6e5f3a9b8c",
+            paymentId = IdForPayment,
+            startsAt = datetime.utcnow(),
+            endsAt = datetime.utcnow() + timedelta(days=30),
+            autoRenew = True
+        )
+        await db_session.execute(query)
+        await db_session.commit()

@@ -66,7 +66,7 @@ class TochkaClient:
         request_json = json.dumps(api_request)
 
         headers = {
-            "Authorization": f"Bearer working_token",
+            "Authorization": f"Bearer sandbox.jwt.token",
             "Content-Type": "application/json"
         }
 
