@@ -139,7 +139,6 @@ async def on_message(message: cl.Message):
 
         elif message.command == "purchase":
             await create_sub()
-            await cl.Message(content = "Подписка оформлена!").send()
             return
 
         elif message.command == "github":
@@ -315,21 +314,31 @@ async def create_sub():
     async with await get_session() as db_session:
         user_id = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(user.id)
 
-        IdForPayment = uuid.uuid4()
-        payment_query = insert(Payment).values(
+        check_query = select(Subscription).filter(Subscription.userId == user_id)
+        result = (await db_session.execute(check_query))
+        sub = result.scalars().all()
+        print(sub)
+        if sub == []:
+            IdForPayment = uuid.uuid4()
+            payment_query = insert(Payment).values(
             id = IdForPayment,
             amount = 100,
-            operationId = "aofjasopjfopasjfo"
-        )
-        await db_session.execute(payment_query)
+            operationId = "975f3eef-e6bb-4e3c-8fa6-45132c2e6a9c"
+            )
+            await db_session.execute(payment_query)
 
-        query = insert(Subscription).values(
-            userId = user_id,
-            subTypeId = "4ab28f9c-5e1d-4f3a-8b7c-1d6e5f3a9b8c",
-            paymentId = IdForPayment,
-            startsAt = datetime.utcnow(),
-            endsAt = datetime.utcnow() + timedelta(days=30),
-            autoRenew = True
-        )
-        await db_session.execute(query)
-        await db_session.commit()
+            
+            query = insert(Subscription).values(
+                userId = user_id,
+                subTypeId = "4ab28f9c-5e1d-4f3a-8b7c-1d6e5f3a9b8c",
+                paymentId = IdForPayment,
+                startsAt = datetime.utcnow(),
+                endsAt = datetime.utcnow() + timedelta(days=30),
+                autoRenew = True
+            )
+            await db_session.execute(query)
+            await db_session.commit()
+            await cl.Message(content = "Подписка оформлена!").send()
+        else:
+            await cl.Message(content="У вас уже есть подписка!").send()
+            return
